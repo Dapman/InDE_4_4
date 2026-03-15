@@ -10,6 +10,7 @@ Key Capabilities:
 - Proto-pattern extraction from completed pursuits
 - Pattern effectiveness tracking
 - v2.6: Stakeholder engagement pattern learning
+- v4.4: Momentum-lift scoring integration in pattern ranking
 
 This is the core differentiator - making InDE learn from every
 innovation attempt and share that wisdom with future innovators.
@@ -23,6 +24,18 @@ from config import (
     PATTERN_ENGINE_CONFIG, PATTERN_MATCHING_PROMPT,
     CROSS_PURSUIT_PROMPT, PROTO_PATTERN_EXTRACTION_PROMPT
 )
+
+# v4.4: Momentum-lift scoring integration (guarded import)
+try:
+    from modules.iml.momentum_lift_scorer import MomentumLiftScorer
+    _lift_scorer = MomentumLiftScorer()
+    MOMENTUM_LIFT_AVAILABLE = True
+except Exception:
+    MOMENTUM_LIFT_AVAILABLE = False
+    _lift_scorer = None
+
+# v4.4: Momentum lift weight — 20% of final scoring
+MOMENTUM_LIFT_WEIGHT = 0.20
 
 
 class PatternEngine:
@@ -198,11 +211,22 @@ class PatternEngine:
             effectiveness = pattern.get("effectiveness", {})
             effectiveness_score = effectiveness.get("success_rate", 0.5)
 
+            # v4.4: Add momentum_lift_score if available
+            momentum_lift = 0.5  # Neutral default
+            if MOMENTUM_LIFT_AVAILABLE and _lift_scorer:
+                momentum_lift = _lift_scorer.score_insight(
+                    insight_category=pattern.get("pattern_category", ""),
+                    pursuit_stage=context.get("stage", "unknown"),
+                    artifact_type=context.get("artifact_type", "unknown"),
+                    momentum_tier=context.get("momentum_tier", "MEDIUM"),
+                )
+
             scored.append({
                 "pattern_id": pattern["pattern_id"],
                 "pattern_name": pattern.get("pattern_name", "Unknown Pattern"),
                 "relevance_score": round(relevance, 3),
                 "effectiveness_score": effectiveness_score,
+                "momentum_lift_score": momentum_lift,  # v4.4
                 "similar_pursuits": effectiveness.get("total_applications", 0),
                 "outcome_distribution": {
                     "success": effectiveness.get("success_count", 0),
@@ -213,9 +237,15 @@ class PatternEngine:
                 "suggested_action": self._generate_action_suggestion(pattern, context)
             })
 
-        # Sort by relevance * effectiveness
+        # v4.4: Sort by weighted combination of relevance * effectiveness + momentum_lift
+        # Existing factors get (1 - MOMENTUM_LIFT_WEIGHT) = 80%, momentum_lift gets 20%
+        def compute_final_score(p):
+            base_score = p["relevance_score"] * p["effectiveness_score"]
+            lift_score = p.get("momentum_lift_score", 0.5)
+            return (1 - MOMENTUM_LIFT_WEIGHT) * base_score + MOMENTUM_LIFT_WEIGHT * lift_score
+
         scored.sort(
-            key=lambda p: p["relevance_score"] * p["effectiveness_score"],
+            key=compute_final_score,
             reverse=True
         )
 
