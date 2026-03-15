@@ -119,6 +119,20 @@ class TerminalStateDetector:
         r"\b(will resume|coming back to|picking (this )?up later)\b"
     ]
 
+    # v4.4 FIX: Phrases where "pivot" means focus shift, not pursuit direction change
+    # These patterns indicate forward progress, not terminal states
+    PIVOT_FALSE_POSITIVE_PATTERNS = [
+        # Attention/focus pivot (shifting mental focus, not pursuit direction)
+        r"\b(attention|focus|thinking|mind|effort) (needs to |should |must |will )?(pivot|shift|turn|move)\b",
+        r"\bpivot (my |our )?(attention|focus|thinking|effort)\b",
+        # Phase transition language (what -> how, idea -> execution)
+        r"\bpivot to (how|the how|execution|building|implementation|next)\b",
+        r"\b(now|next) .{0,20}pivot to (how|building|making|creating)\b",
+        # Forward progress indicators with pivot
+        r"\b(settled|decided|clear) .{0,30}pivot\b",
+        r"\bpivot .{0,20}(next step|next phase|implementation)\b",
+    ]
+
     # Phrases that suggest the message might be about ending/concluding
     # Used as a gate before expensive semantic analysis
     # v2.7.1: Added more conversational triggers
@@ -168,6 +182,11 @@ class TerminalStateDetector:
             re.compile(p, re.IGNORECASE) for p in self.SUSPENSION_PATTERNS
         ]
 
+        # v4.4 FIX: Compile pivot false positive patterns
+        self._pivot_false_positive_patterns = [
+            re.compile(p, re.IGNORECASE) for p in self.PIVOT_FALSE_POSITIVE_PATTERNS
+        ]
+
         # v2.7 FIX: Compile terminal hint patterns for gating semantic analysis
         self._terminal_hint_patterns = [
             re.compile(p, re.IGNORECASE) for p in self.TERMINAL_HINT_PATTERNS
@@ -203,6 +222,15 @@ class TerminalStateDetector:
                 "confidence": 0.90,
                 "evidence": "Suspension signal detected",
                 "trigger_type": "suspension"
+            }
+
+        # v4.4 FIX: Check for pivot false positives (attention/focus shifts, not pursuit pivots)
+        if self._is_pivot_false_positive(message):
+            return {
+                "state": "ACTIVE",
+                "confidence": 0.95,
+                "evidence": "Pivot language indicates focus shift, not pursuit direction change",
+                "trigger_type": "pivot_false_positive"
             }
 
         # Check for explicit terminal patterns
@@ -405,6 +433,27 @@ class TerminalStateDetector:
     def _is_suspension_signal(self, message: str) -> bool:
         """Check if message indicates suspension (NOT terminal)."""
         for pattern in self._suspension_patterns:
+            if pattern.search(message):
+                return True
+        return False
+
+    def _is_pivot_false_positive(self, message: str) -> bool:
+        """
+        v4.4 FIX: Check if 'pivot' in message is a false positive.
+
+        Detects when 'pivot' is used to mean shifting attention/focus
+        (forward progress) rather than changing pursuit direction (terminal).
+
+        Examples of false positives this catches:
+        - "my attention needs to pivot to how to build it"
+        - "now I need to pivot my focus to execution"
+        - "settled on what, now pivot to how"
+        """
+        # Only check if message contains pivot-related words
+        if not re.search(r'\bpivot', message, re.IGNORECASE):
+            return False
+
+        for pattern in self._pivot_false_positive_patterns:
             if pattern.search(message):
                 return True
         return False
