@@ -48,6 +48,9 @@ class MomentumPersistence:
         """
         Persist a session momentum snapshot. Fire-and-forget safe.
 
+        v4.4: Extended with selected_bridge_question_id, last_surfaced_insight_category,
+              and pursuit_stage for IML momentum pattern aggregation.
+
         Returns True on success, False on failure. Never raises.
         """
         try:
@@ -64,6 +67,10 @@ class MomentumPersistence:
                 "bridge_delivered": snapshot.bridge_delivered,
                 "bridge_responded": snapshot.bridge_responded,
                 "exit_reason":     snapshot.exit_reason,
+                # v4.4: IML momentum pattern fields
+                "selected_bridge_question_id": getattr(snapshot, 'selected_bridge_question_id', None),
+                "last_surfaced_insight_category": getattr(snapshot, 'last_surfaced_insight_category', None),
+                "pursuit_stage": getattr(snapshot, 'pursuit_stage', None),
             }
             self.db.momentum_snapshots.insert_one(doc)
             logger.info(

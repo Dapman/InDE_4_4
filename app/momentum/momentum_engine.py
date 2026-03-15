@@ -45,6 +45,9 @@ class MomentumSnapshot:
     """
     Point-in-time momentum state. Persisted at session end.
     Never exposed to the innovator — internal telemetry only.
+
+    v4.4: Added selected_bridge_question_id and last_surfaced_insight_category
+          for IML momentum pattern aggregation.
     """
     session_id: str
     pursuit_id: str
@@ -58,6 +61,10 @@ class MomentumSnapshot:
     bridge_delivered: bool               # Was a bridge fired in this session?
     bridge_responded: bool               # Did the innovator respond to it?
     exit_reason: str                     # "natural", "timeout", "bridge_exit"
+    # v4.4: Fields for IML momentum pattern aggregation
+    selected_bridge_question_id: Optional[str] = None   # Bridge ID selected by BridgeSelector
+    last_surfaced_insight_category: Optional[str] = None  # IML insight category surfaced
+    pursuit_stage: Optional[str] = None                 # Stage at snapshot time (VISION, etc.)
 
 
 @dataclass
