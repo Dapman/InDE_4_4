@@ -431,11 +431,14 @@ export function LeftSidebar() {
         </ScrollArea>
 
         {/* v3.15: Getting Started Checklist */}
+        {/* v4.4.1 FIX: flex-shrink-0 ensures checklist is not hidden by Navigation Items */}
         {activePursuits.length > 0 && !discoveryState?.checklist_complete && (
-          <GettingStartedChecklist
-            discoveryState={discoveryState}
-            isCollapsed={isCollapsed}
-          />
+          <div className="flex-shrink-0 overflow-y-auto max-h-[220px]">
+            <GettingStartedChecklist
+              discoveryState={discoveryState}
+              isCollapsed={isCollapsed}
+            />
+          </div>
         )}
       </div>
 
