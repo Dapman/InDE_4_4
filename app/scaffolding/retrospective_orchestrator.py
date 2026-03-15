@@ -1,5 +1,5 @@
 """
-InDE MVP v2.8 - Retrospective Orchestrator
+InDE MVP v4.4.0 - Retrospective Orchestrator
 
 Orchestrates retrospective conversations and artifact generation.
 Uses three-tier prompt composition: Core + Methodology + Outcome.
@@ -16,6 +16,9 @@ v2.8 Enhancements:
 - Pause and resume support
 - Gentle completion prompts
 - Partial artifact generation
+
+v4.4.0 Enhancement:
+- Momentum Trajectory dimension added to retrospective learning capture
 """
 
 import json
@@ -25,6 +28,14 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 from config import RETROSPECTIVE_CONFIG
+
+# v4.4: Momentum Trajectory dimension (guarded import)
+try:
+    from modules.retrospective.momentum_trajectory import MomentumTrajectory
+    MOMENTUM_TRAJECTORY_AVAILABLE = True
+except Exception:
+    MOMENTUM_TRAJECTORY_AVAILABLE = False
+    MomentumTrajectory = None
 
 
 class RetrospectiveOrchestrator:
@@ -695,6 +706,13 @@ I'll guide you through a series of questions - feel free to be candid and detail
         """Generate completion message for partial retrospective."""
         outcome = artifact.get("outcome_state", "TERMINATED")
 
+        # v4.4: Include momentum trajectory if available
+        momentum_line = ""
+        if "momentum_trajectory" in artifact:
+            mt = artifact["momentum_trajectory"]
+            if mt.get("trajectory_direction") and mt["trajectory_direction"] != "insufficient_data":
+                momentum_line = f"- Your energy trajectory: {mt.get('trajectory_direction', 'captured')}\n"
+
         base = f"""**Your Retrospective is Complete (Partial)**
 
 You completed {completion_pct:.0%} of the retrospective questions. I've captured:
@@ -702,7 +720,7 @@ You completed {completion_pct:.0%} of the retrospective questions. I've captured
 - {len(artifact.get('key_learnings', []))} key learning(s)
 - {len(fear_resolutions)} fear resolution(s)
 - {len(patterns)} proto-pattern(s) extracted
-
+{momentum_line}
 These insights are now part of your innovation memory.
 
 """
@@ -763,7 +781,7 @@ These insights are now part of your innovation memory.
         pursuit = self.db.get_pursuit(pursuit_id) if pursuit_id else None
 
         artifact = {
-            "schema_version": "1.0",
+            "schema_version": "1.1",  # v4.4: incremented for momentum_trajectory
             "retrospective_id": retrospective_id,
             "pursuit_id": pursuit_id,
             "pursuit_name": pursuit.get("title", "Unknown") if pursuit else "Unknown",
@@ -773,6 +791,22 @@ These insights are now part of your innovation memory.
             "duration_days": self._calculate_duration(pursuit),
             **extracted
         }
+
+        # v4.4: Add momentum trajectory dimension
+        if MOMENTUM_TRAJECTORY_AVAILABLE and pursuit_id:
+            try:
+                trajectory = MomentumTrajectory()
+                pursuit_context = {
+                    "idea_summary": pursuit.get("title", "your idea") if pursuit else "your idea",
+                }
+                momentum_dim = trajectory.generate_for_pursuit(pursuit_id, pursuit_context)
+                artifact["momentum_trajectory"] = momentum_dim
+            except Exception as e:
+                print(f"[RetrospectiveOrchestrator] Momentum trajectory failed: {e}")
+                artifact["momentum_trajectory"] = {
+                    "dimension": "momentum_trajectory",
+                    "error": str(e)
+                }
 
         # Store artifact
         try:
@@ -1028,6 +1062,13 @@ Extract only information explicitly discussed in the conversation."""
         """Generate personalized completion message."""
         outcome = artifact["outcome_state"]
 
+        # v4.4: Include momentum trajectory if available
+        momentum_line = ""
+        if "momentum_trajectory" in artifact:
+            mt = artifact["momentum_trajectory"]
+            if mt.get("trajectory_direction") and mt["trajectory_direction"] != "insufficient_data":
+                momentum_line = f"- Your energy trajectory: {mt.get('trajectory_direction', 'captured')}\n"
+
         base = f"""**Your Retrospective is Complete**
 
 I've captured:
@@ -1036,7 +1077,7 @@ I've captured:
 - {len(artifact.get('surprise_factors', []))} surprise factor(s)
 - {len(fear_resolutions)} fear resolution(s)
 - {len(patterns)} proto-pattern(s) extracted
-
+{momentum_line}
 These insights are now part of your innovation memory and will help inform future pursuits.
 
 """
