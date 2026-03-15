@@ -131,6 +131,20 @@ class TerminalStateDetector:
         # Forward progress indicators with pivot
         r"\b(settled|decided|clear) .{0,30}pivot\b",
         r"\bpivot .{0,20}(next step|next phase|implementation)\b",
+        # v4.4.1: User corrections - CRITICAL: these must prevent re-triggering
+        # When user clarifies they are NOT pivoting, don't re-detect as pivot
+        r"\b(not|am not|i'm not|i am not|isn't|wasn't|aren't|don't|didn't) (actually )?(pivot|pivoting)\b",
+        r"\bnot pivoting\b",
+        r"\bwasn't pivoting\b",
+        r"\bdidn't (mean to |intend to )?(pivot|change direction)\b",
+        r"\b(poor|bad|wrong) (choice of |)words\b",
+        r"\bthat's not what (i|I) meant\b",
+        r"\bmisunderst(ood|anding)\b",
+        r"\blet me clarify\b",
+        r"\bto clarify\b",
+        r"\b(i|I) (simply |just )?(meant|mean)\b",
+        r"\bstill (working on|pursuing|committed to)\b",
+        r"\bnot (done|finished|stopping|abandoning|ending|changing direction)\b",
     ]
 
     # Phrases that suggest the message might be about ending/concluding
