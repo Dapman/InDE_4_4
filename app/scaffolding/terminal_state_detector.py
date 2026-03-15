@@ -121,6 +121,7 @@ class TerminalStateDetector:
 
     # v4.4 FIX: Phrases where "pivot" means focus shift, not pursuit direction change
     # These patterns indicate forward progress, not terminal states
+    # NOTE: These are only checked when message contains "pivot"
     PIVOT_FALSE_POSITIVE_PATTERNS = [
         # Attention/focus pivot (shifting mental focus, not pursuit direction)
         r"\b(attention|focus|thinking|mind|effort) (needs to |should |must |will )?(pivot|shift|turn|move)\b",
@@ -131,20 +132,36 @@ class TerminalStateDetector:
         # Forward progress indicators with pivot
         r"\b(settled|decided|clear) .{0,30}pivot\b",
         r"\bpivot .{0,20}(next step|next phase|implementation)\b",
-        # v4.4.1: User corrections - CRITICAL: these must prevent re-triggering
-        # When user clarifies they are NOT pivoting, don't re-detect as pivot
+        # Pivot-specific corrections
         r"\b(not|am not|i'm not|i am not|isn't|wasn't|aren't|don't|didn't) (actually )?(pivot|pivoting)\b",
         r"\bnot pivoting\b",
         r"\bwasn't pivoting\b",
         r"\bdidn't (mean to |intend to )?(pivot|change direction)\b",
+    ]
+
+    # v4.4.2 FIX: General user correction patterns - ALWAYS checked (not gated by "pivot")
+    # These catch when user clarifies they didn't mean terminal intent regardless of keywords
+    USER_CORRECTION_PATTERNS = [
+        # Explicit corrections of word choice / misunderstanding
         r"\b(poor|bad|wrong) (choice of |)words\b",
         r"\bthat's not what (i|I) meant\b",
+        r"\bI didn't mean (that|it that way)\b",
         r"\bmisunderst(ood|anding)\b",
         r"\blet me clarify\b",
         r"\bto clarify\b",
         r"\b(i|I) (simply |just )?(meant|mean)\b",
+        r"\bI was (just |only )?(talking about|referring to)\b",
+        # Clarifying forward progress / active status
         r"\bstill (working on|pursuing|committed to)\b",
+        r"\b(pursuit|project|idea) is (still )?active\b",
         r"\bnot (done|finished|stopping|abandoning|ending|changing direction)\b",
+        r"\bI'm not (done|finished|stopping|abandoning|ending)\b",
+        r"\bnot changing (direction|course)\b",
+        # Focus/attention shift (not direction change)
+        r"\b(shifting|shift) (my |our )?(attention|focus)\b",
+        r"\b(moving|move) (my |our )?(attention|focus|thinking)\b",
+        # Direct "actually" correction at start of message
+        r"^actually\b",
     ]
 
     # Phrases that suggest the message might be about ending/concluding
@@ -201,6 +218,11 @@ class TerminalStateDetector:
             re.compile(p, re.IGNORECASE) for p in self.PIVOT_FALSE_POSITIVE_PATTERNS
         ]
 
+        # v4.4.2 FIX: Compile user correction patterns (always checked, not gated by "pivot")
+        self._user_correction_patterns = [
+            re.compile(p, re.IGNORECASE) for p in self.USER_CORRECTION_PATTERNS
+        ]
+
         # v2.7 FIX: Compile terminal hint patterns for gating semantic analysis
         self._terminal_hint_patterns = [
             re.compile(p, re.IGNORECASE) for p in self.TERMINAL_HINT_PATTERNS
@@ -245,6 +267,16 @@ class TerminalStateDetector:
                 "confidence": 0.95,
                 "evidence": "Pivot language indicates focus shift, not pursuit direction change",
                 "trigger_type": "pivot_false_positive"
+            }
+
+        # v4.4.2 FIX: Check for user corrections (clarifications that they didn't mean terminal)
+        # This is checked BEFORE explicit patterns to prevent re-triggering on correction messages
+        if self._is_user_correction(message):
+            return {
+                "state": "ACTIVE",
+                "confidence": 0.95,
+                "evidence": "User is clarifying/correcting, not indicating terminal intent",
+                "trigger_type": "user_correction"
             }
 
         # Check for explicit terminal patterns
@@ -469,6 +501,25 @@ class TerminalStateDetector:
 
         for pattern in self._pivot_false_positive_patterns:
             if pattern.search(message):
+                return True
+        return False
+
+    def _is_user_correction(self, message: str) -> bool:
+        """
+        v4.4.2 FIX: Check if user is correcting a false positive terminal detection.
+
+        Unlike _is_pivot_false_positive which only checks when "pivot" is present,
+        this method ALWAYS checks for correction patterns regardless of keywords.
+
+        This catches messages like:
+        - "I'm not done with this pursuit"
+        - "Let me clarify - I'm still working on this"
+        - "That's not what I meant"
+        - "I'm still pursuing this idea"
+        """
+        message_lower = message.lower().strip()
+        for pattern in self._user_correction_patterns:
+            if pattern.search(message_lower):
                 return True
         return False
 
