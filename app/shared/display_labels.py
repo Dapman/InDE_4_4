@@ -621,7 +621,7 @@ class DisplayLabels:
                 "description": "Your innovation's problem, solution, and value proposition"
             },
             "fears": {
-                "label": "Fears & Concerns",
+                "label": "Challenges & Concerns",
                 "icon": "⚠️",
                 "description": "Identified risks and concerns about the innovation"
             },
@@ -640,6 +640,201 @@ class DisplayLabels:
                 "icon": "✅",
                 "description": "Evidence captured from validation experiments"
             }
+        },
+
+        # =====================================================================
+        # v4.4.1: SCAFFOLDING ELEMENT DISPLAY LABELS
+        # =====================================================================
+        # Maps internal element names to innovator-facing labels.
+        # Critical: Avoid innovation methodology jargon (e.g., "fears")
+
+        "scaffolding_elements": {
+            # Vision elements
+            "problem_statement": {
+                "label": "The Problem You're Solving",
+                "icon": "🎯",
+                "description": "What challenge or opportunity are you addressing?"
+            },
+            "target_user": {
+                "label": "Who You're Helping",
+                "icon": "👤",
+                "description": "The people who will benefit from your innovation"
+            },
+            "current_situation": {
+                "label": "How Things Work Today",
+                "icon": "📍",
+                "description": "The current state before your innovation"
+            },
+            "pain_points": {
+                "label": "What's Not Working",
+                "icon": "⚡",
+                "description": "The specific frustrations or gaps you're addressing"
+            },
+            "solution_concept": {
+                "label": "Your Solution",
+                "icon": "💡",
+                "description": "How you're going to solve the problem"
+            },
+            "value_proposition": {
+                "label": "Why It Matters",
+                "icon": "✨",
+                "description": "The value you're creating for your users"
+            },
+            "differentiation": {
+                "label": "What Makes It Different",
+                "icon": "🌟",
+                "description": "How your approach stands out from alternatives"
+            },
+            "success_criteria": {
+                "label": "How You'll Know It's Working",
+                "icon": "📊",
+                "description": "Measurable signs of success"
+            },
+            # Risk/concern elements (formerly "fears")
+            "capability_fears": {
+                "label": "Can We Build This?",
+                "icon": "🔧",
+                "description": "Technical and capability concerns"
+            },
+            "market_fears": {
+                "label": "Will People Want This?",
+                "icon": "🎯",
+                "description": "Market demand and adoption concerns"
+            },
+            "resource_fears": {
+                "label": "Do We Have What We Need?",
+                "icon": "📦",
+                "description": "Resource availability concerns"
+            },
+            "timing_fears": {
+                "label": "Is the Timing Right?",
+                "icon": "⏰",
+                "description": "Market timing and readiness concerns"
+            },
+            "competition_fears": {
+                "label": "What About Competitors?",
+                "icon": "🏁",
+                "description": "Competitive landscape concerns"
+            },
+            "personal_fears": {
+                "label": "Personal Concerns",
+                "icon": "💭",
+                "description": "Your personal worries about pursuing this"
+            },
+            # Validation/hypothesis elements
+            "assumption_statement": {
+                "label": "What You Believe",
+                "icon": "💭",
+                "description": "The key assumption you're testing"
+            },
+            "testable_prediction": {
+                "label": "What Should Happen",
+                "icon": "🎯",
+                "description": "A specific, testable prediction"
+            },
+            "test_method": {
+                "label": "How You'll Test It",
+                "icon": "🔬",
+                "description": "Your approach to validating the assumption"
+            },
+            "success_metric": {
+                "label": "Success Looks Like",
+                "icon": "📈",
+                "description": "How you'll measure validation success"
+            },
+            "failure_criteria": {
+                "label": "When to Reconsider",
+                "icon": "⚠️",
+                "description": "Signs that the assumption may be wrong"
+            },
+            "learning_plan": {
+                "label": "What You'll Learn",
+                "icon": "📚",
+                "description": "The insights you expect to gain"
+            },
+            # Market elements
+            "competitive_landscape": {
+                "label": "Competition Overview",
+                "icon": "🏁",
+                "description": "Who else is solving this problem"
+            },
+            "business_model": {
+                "label": "How It Makes Money",
+                "icon": "💰",
+                "description": "Your approach to creating and capturing value"
+            },
+            "revenue_model": {
+                "label": "Revenue Approach",
+                "icon": "📊",
+                "description": "How revenue will be generated"
+            },
+            "go_to_market": {
+                "label": "Getting to Market",
+                "icon": "🚀",
+                "description": "Your plan for reaching customers"
+            },
+            "market_timing": {
+                "label": "Market Readiness",
+                "icon": "⏱️",
+                "description": "Why now is the right time"
+            },
+            "adoption_barriers": {
+                "label": "Adoption Challenges",
+                "icon": "🚧",
+                "description": "What might slow user adoption"
+            },
+            # Technical elements
+            "technical_feasibility": {
+                "label": "Technical Feasibility",
+                "icon": "⚙️",
+                "description": "Can this be built with available technology?"
+            },
+            "resource_requirements": {
+                "label": "What's Needed to Build",
+                "icon": "📦",
+                "description": "Resources required for development"
+            },
+            "team_capabilities": {
+                "label": "Team Strengths",
+                "icon": "👥",
+                "description": "What the team brings to the table"
+            },
+            "scalability_constraints": {
+                "label": "Scaling Considerations",
+                "icon": "📈",
+                "description": "Factors that affect growth"
+            },
+            "cost_structure": {
+                "label": "Cost Structure",
+                "icon": "💵",
+                "description": "Key cost drivers and economics"
+            },
+            # Strategy elements
+            "risk_tolerance": {
+                "label": "Risk Appetite",
+                "icon": "⚖️",
+                "description": "How much risk you're willing to take"
+            },
+            "regulatory_concerns": {
+                "label": "Regulatory Landscape",
+                "icon": "📋",
+                "description": "Compliance and regulatory considerations"
+            },
+            "partnerships": {
+                "label": "Key Partnerships",
+                "icon": "🤝",
+                "description": "Strategic relationships that matter"
+            },
+            "stakeholder_alignment": {
+                "label": "Stakeholder Buy-In",
+                "icon": "✅",
+                "description": "Who needs to support this and their status"
+            },
+            "exit_strategy": {
+                "label": "Long-Term Plan",
+                "icon": "🎯",
+                "description": "Where this is heading long-term"
+            },
         },
 
         # =====================================================================
