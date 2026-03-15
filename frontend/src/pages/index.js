@@ -1,0 +1,10 @@
+export { default as LoginPage } from './LoginPage';
+export { default as DashboardPage } from './DashboardPage';
+export { default as PursuitPage } from './PursuitPage';
+export { default as CoachingPage } from './CoachingPage';
+export { default as ArtifactsPage } from './ArtifactsPage';
+export { default as AnalyticsPage } from './AnalyticsPage';
+export { default as EMSPage } from './EMSPage';
+export { default as IKFPage } from './IKFPage';
+export { default as SettingsPage } from './SettingsPage';
+export { default as NotFoundPage } from './NotFoundPage';

@@ -1,0 +1,16 @@
+# docker-compose.override.yml — Development overrides
+# Exposes Redis and IKF ports for debugging
+version: "3.8"
+
+services:
+  inde-events:
+    ports:
+      - "6379:6379"    # Expose Redis to host for redis-cli debugging
+
+  inde-ikf:
+    ports:
+      - "8090:8090"    # Expose IKF API to host for direct testing
+
+  inde-app:
+    environment:
+      - LOG_LEVEL=DEBUG

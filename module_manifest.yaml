@@ -1,0 +1,254 @@
+# InDE MVP v3.7.4 Module Manifest
+# UI Foundation: React + Design System
+
+version: "3.7.4"
+version_name: "UI Foundation: React + Design System"
+release_date: "2026-02-19"
+
+modules:
+
+  # v3.7.4.0 NEW MODULES - FRONTEND
+  frontend/api:
+    classification: NEW
+    interfaces:
+      - client (Axios instance)
+      - authApi
+      - pursuitsApi
+      - coachingApi
+      - artifactsApi
+      - analyticsApi
+      - emsApi
+      - ikfApi
+      - systemApi
+      - CoachingWebSocket
+    dependencies:
+      - axios
+      - stores/authStore
+    consumers:
+      - hooks
+      - pages
+    notes: "API client layer for React frontend. All backend communication."
+
+  frontend/stores:
+    classification: NEW
+    interfaces:
+      - useAuthStore
+      - usePursuitStore
+      - useUIStore
+      - useCoachingStore
+    dependencies:
+      - zustand
+    consumers:
+      - components
+      - hooks
+      - pages
+    notes: "Zustand state management stores."
+
+  frontend/components/layout:
+    classification: NEW
+    interfaces:
+      - AppShell
+      - TopBar
+      - LeftSidebar
+      - RightSidebar
+      - StatusBar
+    dependencies:
+      - react-router-dom
+      - stores
+      - hooks
+    consumers:
+      - App
+    notes: "5-zone layout shell components."
+
+  frontend/components/ui:
+    classification: NEW
+    interfaces:
+      - Button
+      - Input
+      - Dialog
+      - Command
+      - Badge
+      - DropdownMenu
+      - (shadcn/ui components)
+    dependencies:
+      - tailwindcss
+      - radix-ui
+    consumers:
+      - components/layout
+      - pages
+    notes: "shadcn/ui component library."
+
+  frontend/hooks:
+    classification: NEW
+    interfaces:
+      - useAuth
+      - usePursuit
+      - usePursuitList
+      - useCoaching
+      - useDisplayLabel
+      - useKeyboardShortcut
+    dependencies:
+      - react-query
+      - api
+      - stores
+    consumers:
+      - pages
+      - components
+    notes: "Custom React hooks for data fetching and state."
+
+  frontend/pages:
+    classification: NEW
+    interfaces:
+      - LoginPage
+      - DashboardPage (stub)
+      - PursuitPage (stub)
+      - CoachingPage (stub)
+      - ArtifactsPage (stub)
+      - AnalyticsPage (stub)
+      - EMSPage (stub)
+      - IKFPage (stub)
+      - SettingsPage (stub)
+      - NotFoundPage
+    dependencies:
+      - components
+      - hooks
+    consumers:
+      - App (router)
+    notes: "Page-level components. Most are stubs for v3.7.4.x completion."
+
+  # v3.7.3 MODULES (preserved)
+  ems/review_interface:
+    classification: NEW
+    interfaces:
+      - ReviewSessionManager
+      - start_review_session
+      - process_innovator_response
+      - apply_refinements
+      - slugify
+    dependencies:
+      - ems/pattern_inference
+      - ems/adl_generator
+      - core/database
+      - shared/display_labels
+    consumers:
+      - api/ems
+      - ui/chat_interface
+    notes: "Coaching-assisted review of inferred methodology. Final EMS engine."
+
+  ems/archetype_publisher:
+    classification: NEW
+    interfaces:
+      - ArchetypePublisher.publish
+      - ArchetypePublisher.update_visibility
+      - ArchetypePublisher.check_evolution_opportunity
+      - ArchetypePublisher.get_innovator_archetypes
+      - ArchetypePublisher.get_published_archetypes
+    dependencies:
+      - ems/review_interface
+      - ems/adl_generator
+      - core/database
+      - shared/display_labels
+      - ikf (optional)
+    consumers:
+      - api/ems
+      - ui/chat_interface
+    notes: "Publishes approved methodologies to Archetype Repository. Handles visibility, versioning, IKF sharing."
+
+  # MODIFIED MODULES (v3.7.3 updates)
+  ems/pattern_inference:
+    classification: MODIFIED
+    changes:
+      - Added _compute_archetype_similarity() for true archetype comparison
+      - Added _compare_to_existing_archetypes() for distinctiveness check
+      - Added _longest_common_subsequence() helper
+      - Updated _calculate_confidence() to include similar_archetypes
+    notes: "Audit I remediation - true archetype-to-archetype similarity"
+
+  core/database:
+    classification: MODIFIED
+    changes:
+      - Added review_sessions collection (56 total collections)
+      - Added review session CRUD operations
+      - Added get_inferred_archetypes() and get_inferred_archetype()
+      - Added update_review_session_stage() and _phase_index()
+    notes: "Review session persistence layer"
+
+  api/ems:
+    classification: MODIFIED
+    changes:
+      - Added 13 new endpoints (23 total routes)
+      - Review session endpoints
+      - Published archetype endpoints
+    notes: "REST API for EMS review and publication"
+
+  events/schemas:
+    classification: MODIFIED
+    changes:
+      - Added 7 new EMS event types
+      - EMSReviewStartedEvent, EMSReviewRefinementAppliedEvent, EMSReviewCompletedEvent
+      - EMSArchetypePublishedEvent, EMSArchetypeVisibilityChangedEvent
+      - EMSArchetypeIKFSharedEvent, EMSArchetypeEvolutionTriggeredEvent
+    notes: "Event infrastructure for review and publication workflow"
+
+  shared/display_labels:
+    classification: MODIFIED
+    changes:
+      - Added review_status category (5 labels)
+      - Added refinement_action category (10 labels)
+      - Added methodology_visibility category (4 labels)
+      - Added archetype_version category (3 labels)
+    notes: "Human-readable labels for review interface"
+
+  ui/chat_interface:
+    classification: MODIFIED
+    changes:
+      - Added EMS button to Quick Actions toolbar
+      - Added EMS panel with 3 tabs
+      - Added EMS helper functions
+      - Added review session state management
+    notes: "UI integration for EMS review workflow"
+
+  # EXISTING MODULES (unchanged)
+  ems/process_observer:
+    classification: UNCHANGED
+    notes: "Process observation engine (v3.7.1)"
+
+  ems/inference_data_prep:
+    classification: UNCHANGED
+    notes: "Inference data preparation (v3.7.2)"
+
+  ems/adl_generator:
+    classification: UNCHANGED
+    notes: "ADL generation from patterns (v3.7.2)"
+
+# Collection Summary
+collections:
+  total: 56
+  new_in_373:
+    - review_sessions
+
+# API Endpoint Summary
+api_endpoints:
+  total: 23
+  new_in_373:
+    - POST /api/ems/review/start/{innovator_id}
+    - POST /api/ems/review/{session_id}/exchange
+    - GET /api/ems/review/{session_id}/status
+    - POST /api/ems/review/{session_id}/name
+    - POST /api/ems/review/{session_id}/visibility
+    - POST /api/ems/review/{session_id}/approve
+    - POST /api/ems/review/{session_id}/reject
+    - GET /api/ems/review/{session_id}/comparison
+    - GET /api/ems/archetypes/mine
+    - PUT /api/ems/archetypes/{id}/visibility
+    - GET /api/ems/archetypes/{id}/evolution-check
+    - POST /api/ems/archetypes/{id}/evolve
+
+# Test Summary
+tests:
+  file: tests/test_ems_inference.py
+  total_tests: 42
+  new_test_classes:
+    - TestReviewInterface
+    - TestArchetypePublisher
+    - TestDisplayLabelsReview

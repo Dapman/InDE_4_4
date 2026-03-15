@@ -1,0 +1,191 @@
+# =============================================================================
+# InDE Enterprise Tier — Distributed Deployment
+# Innovation Development Environment v3.9.0
+# =============================================================================
+#
+# Enterprise deployment with EXTERNAL MongoDB and Redis.
+# Use this when:
+#   - Running InDE across multiple servers
+#   - Using managed database services (MongoDB Atlas, Redis Cloud)
+#   - Requiring high availability and horizontal scaling
+#
+# Required environment variables:
+#   INDEVERSE_LICENSE_KEY    — Enterprise license key (INDE-ENT-xxx)
+#   ANTHROPIC_API_KEY        — Your Anthropic API key
+#   INDE_ADMIN_EMAIL         — Admin email for first-run setup
+#   MONGODB_URL              — External MongoDB connection string
+#   REDIS_URL                — External Redis connection string
+#   JWT_SECRET               — Strong random secret for auth
+#   SERVICE_TOKEN            — Internal service authentication
+#
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # License Validation Service
+  # ===========================================================================
+  inde-license:
+    image: ${INDE_REGISTRY:-registry.indeverse.com}/inde-license:${INDE_VERSION:-3.9.0}
+    build:
+      context: ../license-service
+      dockerfile: Dockerfile
+    container_name: inde-license
+    restart: unless-stopped
+    environment:
+      - INDEVERSE_LICENSE_KEY=${INDEVERSE_LICENSE_KEY}
+      - INDE_LICENSE_MODE=${INDE_LICENSE_MODE:-live}
+      - MONGODB_URL=${MONGODB_URL}
+      - INDE_LOG_LEVEL=${INDE_LOG_LEVEL:-INFO}
+    networks:
+      - inde-internal
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8100/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  # ===========================================================================
+  # Core Application (FastAPI + React)
+  # ===========================================================================
+  inde-app:
+    image: ${INDE_REGISTRY:-registry.indeverse.com}/inde-app:${INDE_VERSION:-3.9.0}
+    build:
+      context: ..
+      dockerfile: app/Dockerfile
+    container_name: inde-app
+    restart: unless-stopped
+    environment:
+      - INDEVERSE_LICENSE_KEY=${INDEVERSE_LICENSE_KEY}
+      - LICENSE_SERVICE_URL=http://inde-license:8100
+      - MONGODB_URL=${MONGODB_URL}
+      - LLM_GATEWAY_URL=${LLM_GATEWAY_URL:-http://inde-llm-gateway:8080}
+      - REDIS_URL=${REDIS_URL}
+      - IKF_SERVICE_URL=${IKF_SERVICE_URL:-http://inde-ikf:8090}
+      - INDE_ADMIN_EMAIL=${INDE_ADMIN_EMAIL}
+      - INDE_PUBLIC_URL=${INDE_PUBLIC_URL}
+      - INDE_LOG_LEVEL=${INDE_LOG_LEVEL:-INFO}
+      - JWT_SECRET=${JWT_SECRET}
+      - SERVICE_TOKEN=${SERVICE_TOKEN}
+    ports:
+      - "${INDE_PORT:-8080}:8000"
+    networks:
+      - inde-internal
+    volumes:
+      - inde_artifacts:/app/outputs
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+      replicas: ${INDE_APP_REPLICAS:-1}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/system/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      inde-license:
+        condition: service_healthy
+      inde-llm-gateway:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ===========================================================================
+  # LLM Gateway (Anthropic API)
+  # ===========================================================================
+  inde-llm-gateway:
+    image: ${INDE_REGISTRY:-registry.indeverse.com}/inde-llm-gateway:${INDE_VERSION:-3.9.0}
+    build:
+      context: ../llm-gateway
+      dockerfile: Dockerfile
+    container_name: inde-llm-gateway
+    restart: unless-stopped
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-claude-sonnet-4-20250514}
+      - RATE_LIMIT_TPM=${RATE_LIMIT_TPM:-100000}
+      - LOG_LEVEL=${INDE_LOG_LEVEL:-INFO}
+    networks:
+      - inde-internal
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "30m"
+        max-file: "3"
+
+  # ===========================================================================
+  # IKF Service (Organization-Scoped)
+  # ===========================================================================
+  inde-ikf:
+    image: ${INDE_REGISTRY:-registry.indeverse.com}/inde-ikf:${INDE_VERSION:-3.9.0}
+    build:
+      context: ../ikf-service
+      dockerfile: Dockerfile
+    container_name: inde-ikf
+    restart: unless-stopped
+    environment:
+      - MONGODB_URL=${MONGODB_URL}
+      - REDIS_URL=${REDIS_URL}
+      - IKF_FEDERATION_MODE=${IKF_FEDERATION_MODE:-simulation}
+      - SERVICE_TOKEN=${SERVICE_TOKEN}
+      - LOG_LEVEL=${INDE_LOG_LEVEL:-INFO}
+    networks:
+      - inde-internal
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "30m"
+        max-file: "3"
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  inde-internal:
+    driver: bridge
+
+# =============================================================================
+# Volumes (only for local artifacts, not databases)
+# =============================================================================
+volumes:
+  inde_artifacts:
+    name: inde_artifacts

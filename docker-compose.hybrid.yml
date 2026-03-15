@@ -1,0 +1,34 @@
+# docker-compose.hybrid.yml — InDE v3.9 Hybrid Deployment
+# "Air-Gapped Intelligence" - Claude Primary with Ollama Failover
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.hybrid.yml up -d
+#
+# This configuration:
+#   1. Uses Claude (Anthropic API) as the primary provider
+#   2. Automatically fails over to local Ollama if Claude is unavailable
+#   3. Provides degraded but functional coaching via local models
+#
+# Prerequisites:
+#   - ANTHROPIC_API_KEY set in .env (for primary)
+#   - Ollama installed on host with model pulled (for failover)
+#
+# Quality tier automatically adjusts:
+#   - PREMIUM: When using Claude (full ODICM capabilities)
+#   - STANDARD/BASIC: When using Ollama (calibrated prompts)
+version: "3.8"
+
+services:
+  inde-llm-gateway:
+    environment:
+      # Hybrid: Claude primary, Ollama failover
+      - LLM_PROVIDER=anthropic
+      - LLM_PROVIDER_CHAIN=anthropic,ollama
+      # Claude settings
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-claude-sonnet-4-20250514}
+      # Ollama failover settings
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

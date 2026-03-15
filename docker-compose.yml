@@ -1,0 +1,171 @@
+# docker-compose.yml — InDE v3.9 Single-Host Deployment
+# "Air-Gapped Intelligence"
+#
+# Usage:
+#   Standard (Claude API):    docker compose up -d
+#   Air-gapped (Ollama):      docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d
+#   Hybrid (failover chain):  docker compose -f docker-compose.yml -f docker-compose.hybrid.yml up -d
+version: "3.8"
+
+services:
+  # License Service (v3.8+)
+  inde-license:
+    build: ./license-service
+    container_name: inde-license
+    environment:
+      - INDEVERSE_LICENSE_KEY=${INDEVERSE_LICENSE_KEY:-}
+      - INDE_LICENSE_MODE=${INDE_LICENSE_MODE:-simulation}
+      - MONGODB_URL=mongodb://inde-db:27017/inde
+      - INDE_LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - inde-license-data:/data
+    networks:
+      - inde-net
+    depends_on:
+      inde-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8100/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  inde-app:
+    build: ./app
+    container_name: inde-app
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URI=mongodb://inde-db:27017/inde
+      - LLM_GATEWAY_URL=${LLM_GATEWAY_URL:-http://inde-llm-gateway:8080}
+      - REDIS_URL=redis://inde-events:6379
+      - "REDIS_STREAM_PREFIX=inde:events:"
+      - EVENT_BUS_FALLBACK=memory
+      - EVENT_CONSUMER_GROUP=inde-app-consumers
+      - IKF_SERVICE_URL=http://inde-ikf:8090
+      - SERVICE_TOKEN=${SERVICE_TOKEN}
+      - JWT_SECRET=${JWT_SECRET}
+      - LOG_LEVEL=INFO
+      # v3.8: License Service
+      - LICENSE_SERVICE_URL=http://inde-license:8100
+      - INDEVERSE_LICENSE_KEY=${INDEVERSE_LICENSE_KEY:-}
+      - INDE_LICENSE_MODE=${INDE_LICENSE_MODE:-simulation}
+      - INDE_ADMIN_EMAIL=${INDE_ADMIN_EMAIL:-}
+      # v4.2: Demo Mode
+      - DEMO_MODE=${DEMO_MODE:-ACTIVE}
+      # v3.4: Convergence Protocol
+      - CONVERGENCE_THRESHOLD=${CONVERGENCE_THRESHOLD:-0.7}
+      - CONVERGENCE_SIGNAL_WEIGHTS=${CONVERGENCE_SIGNAL_WEIGHTS:-repetition:0.25,decision_language:0.30,summary_requests:0.15,satisfaction:0.15,time_investment:0.15}
+      # v3.4: Audit Pipeline
+      - AUDIT_RETENTION_DAYS=${AUDIT_RETENTION_DAYS:-365}
+      - AUDIT_STREAM_BATCH_SIZE=${AUDIT_STREAM_BATCH_SIZE:-100}
+      # v3.4: IDTFS Configuration
+      - IDTFS_MAX_CANDIDATES=${IDTFS_MAX_CANDIDATES:-20}
+      - IDTFS_UNAVAILABLE_HARD_EXCLUDE=${IDTFS_UNAVAILABLE_HARD_EXCLUDE:-true}
+      # v3.4: Org Portfolio
+      - ORG_PORTFOLIO_CACHE_TTL=${ORG_PORTFOLIO_CACHE_TTL:-300}
+    depends_on:
+      inde-db:
+        condition: service_healthy
+      inde-events:
+        condition: service_healthy
+      inde-llm-gateway:
+        condition: service_started
+      inde-license:
+        condition: service_healthy
+    volumes:
+      - inde-artifacts:/app/artifacts
+    networks:
+      - inde-net
+    restart: unless-stopped
+
+  inde-db:
+    image: mongo:7
+    container_name: inde-db
+    volumes:
+      - inde-mongo-data:/data/db
+    networks:
+      - inde-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  inde-llm-gateway:
+    build: ./llm-gateway
+    container_name: inde-llm-gateway
+    environment:
+      # v3.9: Provider configuration
+      - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
+      - LLM_PROVIDER_CHAIN=${LLM_PROVIDER_CHAIN:-anthropic}
+      # Anthropic (Claude) settings
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-claude-sonnet-4-20250514}
+      - MAX_TOKENS_PER_MINUTE=100000
+      # Ollama settings (used when LLM_PROVIDER includes ollama)
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3}
+      # General settings
+      - FALLBACK_MODEL_PATH=${FALLBACK_MODEL_PATH:-}
+      - SERVICE_TOKEN=${SERVICE_TOKEN}
+      - LOG_LEVEL=INFO
+    networks:
+      - inde-net
+    restart: unless-stopped
+
+  inde-events:
+    image: redis:7-alpine
+    container_name: inde-events
+    volumes:
+      - inde-redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - inde-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  inde-ikf:
+    build: ./ikf-service
+    container_name: inde-ikf
+    environment:
+      - MONGO_URI=mongodb://inde-db:27017/inde
+      - REDIS_URL=redis://inde-events:6379
+      - "REDIS_STREAM_PREFIX=inde:events:"
+      - IKF_CONSUMER_GROUP=ikf-pipeline
+      - LLM_GATEWAY_URL=http://inde-llm-gateway:8080
+      - IKF_PROCESSING_MODE=local
+      - IKF_AUTO_PREPARE=true
+      - IKF_MAX_PENDING_REVIEWS=3
+      - SERVICE_TOKEN=${SERVICE_TOKEN}
+      - JWT_SECRET=${JWT_SECRET}
+      - LOG_LEVEL=INFO
+      # v3.4: Composition Patterns
+      - IKF_COMPOSITION_PATTERNS_ENABLED=${IKF_COMPOSITION_PATTERNS_ENABLED:-true}
+    depends_on:
+      inde-db:
+        condition: service_healthy
+      inde-events:
+        condition: service_healthy
+    volumes:
+      - inde-artifacts:/app/artifacts
+    networks:
+      - inde-net
+    restart: unless-stopped
+
+volumes:
+  inde-mongo-data:
+  inde-artifacts:
+  inde-redis-data:
+  inde-license-data:
+
+networks:
+  inde-net:
+    driver: bridge

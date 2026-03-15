@@ -1,0 +1,35 @@
+# InDE v3.8 Application Dependencies
+
+# Core Framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+websockets>=12.0
+pydantic[email]>=2.5.0
+
+# Authentication
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+python-multipart>=0.0.6
+PyJWT>=2.8.0
+
+# Database
+pymongo>=4.6.0
+
+# Event Bus (v3.2)
+redis>=5.0.0
+
+# LLM (client-side - actual API calls go through gateway)
+httpx>=0.26.0
+
+# Existing v3.0.3 dependencies
+gradio>=4.0.0
+matplotlib>=3.8.0
+numpy>=1.26.0
+pandas>=2.0.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+
+# Utilities
+python-dateutil>=2.8.2

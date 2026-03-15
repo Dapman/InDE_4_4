@@ -1,0 +1,257 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Source+Sans+3:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+    --radius: 0.5rem;
+
+    /* Glass effect */
+    --glass-bg: rgba(15, 15, 18, 0.8);
+    --glass-border: rgba(255, 255, 255, 0.06);
+    --glass-blur: 12px;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+  }
+
+  /* Dark mode is default */
+  html {
+    @apply bg-surface-1 text-zinc-200 font-body antialiased;
+    color-scheme: dark;
+  }
+
+  html.light {
+    @apply bg-surface-light-1 text-zinc-800;
+    color-scheme: light;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    @apply w-1.5;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-zinc-700 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-zinc-600;
+  }
+
+  /* Selection styling */
+  ::selection {
+    @apply bg-inde-500/30 text-white;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    margin: 0;
+  }
+}
+
+@layer components {
+  /* Glass panels */
+  .glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+  }
+
+  /* InDE gradient */
+  .inde-gradient {
+    @apply bg-gradient-to-r from-blue-500 via-inde-500 to-violet-500;
+  }
+
+  .inde-gradient-text {
+    @apply bg-gradient-to-r from-blue-400 via-inde-400 to-violet-400 bg-clip-text text-transparent;
+  }
+
+  /* Loading shimmer */
+  .shimmer {
+    @apply relative overflow-hidden;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+    background-size: 200% 100%;
+    @apply animate-shimmer;
+  }
+}
+
+/* Print styles */
+@media print {
+  /* Hide navigation and UI chrome */
+  .no-print,
+  nav,
+  aside,
+  header,
+  footer,
+  .sidebar,
+  button:not(.print-include),
+  .print-hide {
+    display: none !important;
+  }
+
+  /* Reset colors for print */
+  html, body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+
+  /* Print container */
+  .print-container {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Print header */
+  .print-header {
+    border-bottom: 2px solid #333;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+  }
+
+  .print-header h1 {
+    font-size: 18pt;
+    font-weight: bold;
+    color: black;
+    margin: 0;
+  }
+
+  .print-header .print-subtitle {
+    font-size: 10pt;
+    color: #666;
+    margin-top: 4px;
+  }
+
+  /* Print content */
+  .print-content {
+    color: black;
+  }
+
+  .print-content h2 {
+    font-size: 14pt;
+    font-weight: 600;
+    margin-top: 16px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 4px;
+  }
+
+  .print-content h3 {
+    font-size: 12pt;
+    font-weight: 600;
+    margin-top: 12px;
+    margin-bottom: 6px;
+  }
+
+  .print-content p {
+    margin: 8px 0;
+  }
+
+  .print-content ul, .print-content ol {
+    margin: 8px 0;
+    padding-left: 24px;
+  }
+
+  .print-content li {
+    margin: 4px 0;
+  }
+
+  /* Print metadata */
+  .print-meta {
+    font-size: 9pt;
+    color: #666;
+    margin-top: 20px;
+    padding-top: 10px;
+    border-top: 1px solid #ccc;
+  }
+
+  /* Page breaks */
+  .page-break {
+    page-break-before: always;
+  }
+
+  .avoid-break {
+    page-break-inside: avoid;
+  }
+
+  /* Links */
+  a {
+    color: black !important;
+    text-decoration: underline;
+  }
+
+  a[href]:after {
+    content: " (" attr(href) ")";
+    font-size: 9pt;
+    color: #666;
+  }
+
+  /* Tables */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+  }
+
+  th {
+    background: #f0f0f0;
+    font-weight: 600;
+  }
+}

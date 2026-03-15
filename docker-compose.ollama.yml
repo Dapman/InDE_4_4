@@ -1,0 +1,34 @@
+# docker-compose.ollama.yml — InDE v3.9 Air-Gapped Deployment
+# "Air-Gapped Intelligence" - 100% Local LLM via Ollama
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d
+#
+# Prerequisites:
+#   - Ollama installed on host: https://ollama.ai
+#   - Model pulled: ollama pull llama3 (or preferred model)
+#   - For larger models (70B+): ollama pull llama3:70b
+#
+# Quality Tiers:
+#   - BASIC tier (7B-13B): llama3, mistral, phi3
+#   - STANDARD tier (70B+): llama3:70b, mixtral, qwen:72b
+#
+# No internet connection required after models are downloaded.
+version: "3.8"
+
+services:
+  # Ollama service runs on host, accessible via host.docker.internal
+  # This overlay only configures the gateway to use Ollama as primary.
+
+  inde-llm-gateway:
+    environment:
+      # Override: Use Ollama as primary (air-gapped mode)
+      - LLM_PROVIDER=ollama
+      - LLM_PROVIDER_CHAIN=ollama
+      # Ollama connection (host.docker.internal for Docker Desktop)
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3}
+      # No Anthropic key needed in air-gapped mode
+      - ANTHROPIC_API_KEY=
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
