@@ -1,8 +1,8 @@
 """
-InDE MVP v3.4 - Portfolio Dashboard
-Org-Level Portfolio Dashboard with 7-panel enterprise intelligence.
+InDE MVP v4.4.0 - Portfolio Dashboard
+Org-Level Portfolio Dashboard with 8-panel enterprise intelligence.
 
-Seven Panels:
+Eight Panels:
 1. Portfolio Health Summary - Aggregate health across all pursuits
 2. Stage Distribution - Pursuits by methodology stage
 3. Resource Allocation - Team capacity and allocation metrics
@@ -10,6 +10,7 @@ Seven Panels:
 5. Risk Radar - Aggregated risk signals across portfolio
 6. Convergence Insights - Coaching convergence patterns
 7. Talent & Formation - IDTFS insights and formation activity
+8. Momentum Health - Org-level momentum analytics (v4.4)
 """
 
 from dataclasses import dataclass, field
@@ -37,6 +38,7 @@ class PanelType(str, Enum):
     RISK_RADAR = "risk_radar"
     CONVERGENCE_INSIGHTS = "convergence_insights"
     TALENT_FORMATION = "talent_formation"
+    MOMENTUM_HEALTH = "momentum_health"  # v4.4: Org-level momentum analytics
 
 
 class HealthLevel(str, Enum):
@@ -125,7 +127,8 @@ class PortfolioDashboard:
             (PanelType.INNOVATION_PIPELINE, self._generate_innovation_pipeline),
             (PanelType.RISK_RADAR, self._generate_risk_radar),
             (PanelType.CONVERGENCE_INSIGHTS, self._generate_convergence_insights),
-            (PanelType.TALENT_FORMATION, self._generate_talent_formation)
+            (PanelType.TALENT_FORMATION, self._generate_talent_formation),
+            (PanelType.MOMENTUM_HEALTH, self._generate_momentum_health),  # v4.4
         ]
 
         for panel_type, generator in panel_generators:
@@ -160,7 +163,8 @@ class PortfolioDashboard:
             PanelType.INNOVATION_PIPELINE: self._generate_innovation_pipeline,
             PanelType.RISK_RADAR: self._generate_risk_radar,
             PanelType.CONVERGENCE_INSIGHTS: self._generate_convergence_insights,
-            PanelType.TALENT_FORMATION: self._generate_talent_formation
+            PanelType.TALENT_FORMATION: self._generate_talent_formation,
+            PanelType.MOMENTUM_HEALTH: self._generate_momentum_health,  # v4.4
         }
 
         generator = generators.get(panel_type)
@@ -797,6 +801,170 @@ class PortfolioDashboard:
             return datetime.now(timezone.utc) - dt < timedelta(days=days)
         except (ValueError, AttributeError):
             return False
+
+    # =========================================================================
+    # PANEL 8: MOMENTUM HEALTH (v4.4)
+    # =========================================================================
+
+    def _generate_momentum_health(self, org_id: str) -> DashboardPanel:
+        """
+        Generate Momentum Health panel (v4.4).
+
+        Shows org-level momentum analytics including:
+        - Aggregate momentum tier distribution
+        - IML pattern learning metrics
+        - Bridge effectiveness rates
+        - Momentum trajectory trends
+        """
+        pursuits = db.get_pursuits_by_org(org_id) or []
+        pursuit_ids = [p.get("pursuit_id") for p in pursuits if p.get("pursuit_id")]
+
+        # Initialize metrics
+        tier_distribution = {"HIGH": 0, "MEDIUM": 0, "LOW": 0, "CRITICAL": 0}
+        total_snapshots = 0
+        total_bridges_delivered = 0
+        total_bridges_responded = 0
+        trajectory_directions = {"rising": 0, "declining": 0, "stable": 0, "mixed": 0}
+        recent_sessions = []
+        avg_composite_scores = []
+
+        # Aggregate momentum snapshots across pursuits
+        for pursuit_id in pursuit_ids[:100]:  # Limit to prevent timeout
+            try:
+                snapshots = list(db.db.momentum_snapshots.find(
+                    {"pursuit_id": pursuit_id},
+                    sort=[("recorded_at", -1)],
+                    limit=10
+                ))
+
+                for snapshot in snapshots:
+                    total_snapshots += 1
+                    tier = snapshot.get("momentum_tier", "MEDIUM")
+                    if tier in tier_distribution:
+                        tier_distribution[tier] += 1
+
+                    score = snapshot.get("composite_score", 0.5)
+                    avg_composite_scores.append(score)
+
+                    if snapshot.get("bridge_delivered"):
+                        total_bridges_delivered += 1
+                        if snapshot.get("bridge_responded"):
+                            total_bridges_responded += 1
+
+                    # Track recent sessions
+                    if self._is_within_days(snapshot.get("recorded_at"), 7):
+                        recent_sessions.append({
+                            "pursuit_id": pursuit_id,
+                            "tier": tier,
+                            "score": score,
+                            "recorded_at": snapshot.get("recorded_at")
+                        })
+            except Exception as e:
+                logger.warning(f"Failed to get momentum snapshots for {pursuit_id}: {e}")
+
+        # Get IML pattern metrics
+        iml_metrics = self._get_iml_pattern_metrics(org_id)
+
+        # Calculate averages
+        avg_score = sum(avg_composite_scores) / len(avg_composite_scores) if avg_composite_scores else 0.5
+        bridge_response_rate = (
+            total_bridges_responded / total_bridges_delivered
+            if total_bridges_delivered > 0 else 0
+        )
+
+        # Determine org-level momentum health
+        high_energy_rate = tier_distribution["HIGH"] / total_snapshots if total_snapshots > 0 else 0
+        low_energy_rate = (tier_distribution["LOW"] + tier_distribution["CRITICAL"]) / total_snapshots if total_snapshots > 0 else 0
+
+        if high_energy_rate > 0.4:
+            org_momentum_health = "excellent"
+        elif high_energy_rate > 0.25 and low_energy_rate < 0.2:
+            org_momentum_health = "good"
+        elif low_energy_rate > 0.35:
+            org_momentum_health = "at_risk"
+        else:
+            org_momentum_health = "stable"
+
+        return DashboardPanel(
+            panel_type=PanelType.MOMENTUM_HEALTH,
+            title="Momentum Health",
+            data={
+                "summary": {
+                    "total_sessions_tracked": total_snapshots,
+                    "avg_momentum_score": round(avg_score, 3),
+                    "org_momentum_health": org_momentum_health,
+                    "pursuits_analyzed": len(pursuit_ids)
+                },
+                "tier_distribution": tier_distribution,
+                "bridge_effectiveness": {
+                    "bridges_delivered": total_bridges_delivered,
+                    "bridges_responded": total_bridges_responded,
+                    "response_rate": round(bridge_response_rate, 3)
+                },
+                "iml_learning": iml_metrics,
+                "recent_sessions": sorted(
+                    recent_sessions,
+                    key=lambda x: x.get("recorded_at", ""),
+                    reverse=True
+                )[:10]
+            },
+            cache_duration_seconds=600  # 10 minute cache for momentum data
+        )
+
+    def _get_iml_pattern_metrics(self, org_id: str) -> Dict[str, Any]:
+        """
+        Get IML momentum pattern learning metrics (v4.4).
+
+        Returns metrics about how well the system is learning
+        from momentum patterns across the organization.
+        """
+        try:
+            # Count patterns by type
+            pattern_counts = {}
+            pattern_types = ["BRIDGE_LIFT", "BRIDGE_STALL", "INSIGHT_LIFT", "INSIGHT_STALL"]
+
+            for ptype in pattern_types:
+                count = db.db.momentum_patterns.count_documents({"pattern_type": ptype})
+                pattern_counts[ptype] = count
+
+            total_patterns = sum(pattern_counts.values())
+
+            # Get high-confidence patterns
+            high_confidence = db.db.momentum_patterns.count_documents({
+                "confidence": {"$gte": 0.7}
+            })
+
+            # Get patterns contributed to IKF
+            ikf_eligible = db.db.momentum_patterns.count_documents({
+                "confidence": {"$gte": 0.7},
+                "sample_size": {"$gte": 5}
+            })
+
+            # Calculate learning velocity (patterns created in last 7 days)
+            seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+            recent_patterns = db.db.momentum_patterns.count_documents({
+                "created_at": {"$gte": seven_days_ago}
+            })
+
+            return {
+                "total_patterns": total_patterns,
+                "patterns_by_type": pattern_counts,
+                "high_confidence_patterns": high_confidence,
+                "ikf_contribution_eligible": ikf_eligible,
+                "learning_velocity_7d": recent_patterns,
+                "confidence_rate": round(high_confidence / total_patterns, 3) if total_patterns > 0 else 0
+            }
+        except Exception as e:
+            logger.warning(f"Failed to get IML pattern metrics: {e}")
+            return {
+                "total_patterns": 0,
+                "patterns_by_type": {},
+                "high_confidence_patterns": 0,
+                "ikf_contribution_eligible": 0,
+                "learning_velocity_7d": 0,
+                "confidence_rate": 0,
+                "error": str(e)
+            }
 
 
 # =============================================================================
