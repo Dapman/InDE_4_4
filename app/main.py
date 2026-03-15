@@ -1,8 +1,8 @@
 """
-InDE MVP v3.8 - FastAPI Application Entry Point
-Innovation Development Environment - "Commercial Launch Infrastructure"
+InDE MVP v4.4.0 - FastAPI Application Entry Point
+Innovation Development Environment - "The Learning Engine"
 
-This is the main entry point for the InDE v3.8 API server.
+This is the main entry point for the InDE v4.4.0 API server.
 
 v3.8 Features (NEW):
 - License Validation Service: Startup and periodic license checks
@@ -235,6 +235,32 @@ async def lifespan(app: FastAPI):
     reengagement_task = asyncio.create_task(reengagement_job_loop())
     background_tasks.append(reengagement_task)
     logger.info("Re-engagement background job started (6h interval)")
+
+    # v4.4: Start IML momentum aggregation job
+    async def iml_aggregation_job_loop():
+        """4-hour background loop for IML momentum pattern aggregation."""
+        from modules.iml import MomentumPatternEngine
+        from services.telemetry import track_iml
+        while True:
+            try:
+                await asyncio.sleep(4 * 3600)  # 4 hours
+                engine = MomentumPatternEngine(db.db)
+                result = engine.run_aggregation_cycle()
+                if result.get("patterns_created", 0) > 0 or result.get("patterns_updated", 0) > 0:
+                    logger.info(f"IML aggregation completed: {result}")
+                    track_iml(
+                        "aggregation_cycle",
+                        pattern_type="batch",
+                        sample_size=result.get("snapshots_processed", 0)
+                    )
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"IML aggregation job loop error: {e}")
+
+    iml_aggregation_task = asyncio.create_task(iml_aggregation_job_loop())
+    background_tasks.append(iml_aggregation_task)
+    logger.info("IML momentum aggregation background job started (4h interval)")
 
     logger.info("InDE API ready to accept requests")
 
