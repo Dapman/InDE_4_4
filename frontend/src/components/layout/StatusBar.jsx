@@ -6,7 +6,7 @@ import { Wifi, WifiOff } from 'lucide-react';
 // Version info - update these when releasing new versions
 const VERSION_INFO = {
   product: 'InDE',
-  version: '4.3.0',
+  version: '4.4.0',
   revision: '0',  // Increment for patches within a version
   company: 'InDEVerse, Inc.',
   year: new Date().getFullYear(),

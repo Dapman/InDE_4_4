@@ -925,15 +925,15 @@ export default function SettingsPage() {
             </div>
             <div className="flex items-center justify-between py-2 border-b border-surface-border/50">
               <span className="text-body-sm text-zinc-400">Version</span>
-              <span className="text-body-sm text-zinc-200 font-mono">4.3.0</span>
+              <span className="text-body-sm text-zinc-200 font-mono">4.4.0</span>
             </div>
             <div className="flex items-center justify-between py-2 border-b border-surface-border/50">
               <span className="text-body-sm text-zinc-400">Codename</span>
-              <span className="text-body-sm text-zinc-200 font-mono">The Return</span>
+              <span className="text-body-sm text-zinc-200 font-mono">The Learning Engine</span>
             </div>
             <div className="flex items-center justify-between py-2 border-b border-surface-border/50">
               <span className="text-body-sm text-zinc-400">Build</span>
-              <span className="text-body-sm text-zinc-200 font-mono">v4.3.0</span>
+              <span className="text-body-sm text-zinc-200 font-mono">v4.4.0</span>
             </div>
             <div className="flex items-center justify-between py-2">
               <span className="text-body-sm text-zinc-400">Company</span>

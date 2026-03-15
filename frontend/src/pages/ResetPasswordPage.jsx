@@ -325,7 +325,7 @@ export default function ResetPasswordPage() {
         </div>
 
         <p className="text-caption text-zinc-600 text-center mt-6">
-          InDE v4.3.0
+          InDE v4.4.0
         </p>
       </div>
     </div>

@@ -1,7 +1,7 @@
 """
 Re-Engagement Module — Async Coaching Outreach
 
-InDE MVP v4.3.0 — The Depth Frame
+InDE MVP v4.4.0 — The Learning Engine
 
 Watches for innovators who have not returned within 48–72 hours
 following a session that ended with low momentum or without a

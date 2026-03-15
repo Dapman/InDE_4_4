@@ -1,7 +1,7 @@
 """
 Re-Entry Module — Momentum-Aware Session Opening
 
-InDE MVP v4.3.0 — The Depth Frame
+InDE MVP v4.4.0 — The Learning Engine
 
 Generates personalized coach opening turns for every returning user
 session. The opening is written specifically for this innovator, about

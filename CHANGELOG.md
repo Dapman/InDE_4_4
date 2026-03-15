@@ -1,5 +1,23 @@
 # InDE MVP Changelog
 
+## [4.4.0] — 2026-03-XX "The Learning Engine"
+
+### Series
+InDE v4.x — Momentum Management. v4.4 closes the intelligence loop opened by the
+entire v4.x series: momentum signals accumulated across pursuits become cross-innovator
+patterns. The IML learns what keeps innovators moving forward. The coach adapts.
+
+### Added
+[filled in at end of build]
+
+### Architecture
+- GitHub: https://github.com/Dapman/InDE_4_4
+- Deployment: Local development only
+- v3.16.0 beta testing continues unaffected
+- InDE_4_3 preserved at ~/InDE_4_3 — not modified
+
+---
+
 ## [4.2.0] — 2026-03-15 "The Depth Frame"
 
 ### Series

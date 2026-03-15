@@ -356,7 +356,7 @@ For more information: https://indeverse.com
                 "other_artifacts": len(export_data.get("other_artifacts", [])),
                 "has_retrospective": export_data.get("retrospective") is not None
             },
-            "generated_by": "InDE v4.3.0",
+            "generated_by": "InDE v4.4.0",
             "indeverse": "https://indeverse.com"
         }
 

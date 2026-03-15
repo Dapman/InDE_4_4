@@ -174,7 +174,7 @@ export function OnboardingFlow({ onComplete }) {
 
       {/* Version */}
       <p className="absolute bottom-8 text-caption text-zinc-600">
-        InDE v4.3.0
+        InDE v4.4.0
       </p>
     </div>
   );
