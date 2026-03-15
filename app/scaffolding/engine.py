@@ -1754,6 +1754,7 @@ class ScaffoldingEngine:
     def _user_declined_formalization(self, message: str) -> bool:
         """
         v2.5: Check if user explicitly declined artifact generation.
+        v4.4: Extended to catch user corrections of false positive terminal detection.
 
         Only returns True if user said no/not now/later etc.
         Returns False if user just talked about something else.
@@ -1779,6 +1780,39 @@ class ScaffoldingEngine:
 
         # Check for explicit decline patterns
         for pattern in decline_patterns:
+            if re.search(pattern, message_lower):
+                return True
+
+        # v4.4 FIX: Check for user corrections of false positive terminal detection
+        # These patterns catch when user clarifies they didn't mean what the system thought
+        correction_patterns = [
+            # Direct corrections of pivot/terminal misdetection
+            r"\b(not|didn't|don't|wasn't|isn't) (actually )?(pivoting|pivot|changing direction)\b",
+            r"\bam not pivoting\b",
+            r"\bnot pivoting\b",
+            r"\bwasn't pivoting\b",
+            r"\bdidn't (mean|intend) (to |)(pivot|change direction)\b",
+            r"\b(poor|bad|wrong) (choice of |)words\b",
+            r"\bthat's not what I meant\b",
+            r"\bI didn't mean (that|it that way)\b",
+            r"\bmisunderst(ood|anding)\b",
+            r"\blet me clarify\b",
+            r"\bto clarify\b",
+            r"\bI (simply |just )?meant\b",
+            r"\bI was (just |only )?(talking about|referring to)\b",
+            # Clarifying forward progress, not direction change
+            r"\b(shifting|shift) (my |our )?(attention|focus)\b",
+            r"\b(moving|move) (my |our )?(attention|focus|thinking)\b",
+            r"\bnot changing (direction|course)\b",
+            r"\bstill (working on|pursuing|committed to)\b",
+            r"\b(pursuit|project|idea) is (still )?active\b",
+            # Direct rejection of the retrospective offer context
+            r"^actually\b",  # "Actually, I..." at the start often signals correction
+            r"\bI'm not (done|finished|stopping|abandoning|ending)\b",
+            r"\bnot (done|finished|stopping|abandoning|ending) (this|the|with)\b",
+        ]
+
+        for pattern in correction_patterns:
             if re.search(pattern, message_lower):
                 return True
 
