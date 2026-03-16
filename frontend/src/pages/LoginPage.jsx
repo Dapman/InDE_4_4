@@ -74,13 +74,23 @@ export default function LoginPage() {
 
       navigate('/');
     } catch (error) {
-      // v4.2: Check if demo mode is inactive
+      // v4.4.1: Robust check for demo mode inactive
+      // Check multiple ways the 403/DEMO_MODE_INACTIVE error could appear
+      const status = error.response?.status;
       const errorDetail = error.response?.data?.detail;
-      if (errorDetail?.code === 'DEMO_MODE_INACTIVE' || error.response?.status === 403) {
+      const errorCode = typeof errorDetail === 'object' ? errorDetail?.code : null;
+
+      // Show demo inactive popup for any 403 on demo-login endpoint
+      if (status === 403 || errorCode === 'DEMO_MODE_INACTIVE') {
         setShowDemoInactivePopup(true);
-      } else {
-        setError(typeof errorDetail === 'string' ? errorDetail : 'Demo login failed');
+        return;  // Explicit return to prevent any further state changes
       }
+
+      // Fallback error handling
+      const errorMessage = typeof errorDetail === 'string'
+        ? errorDetail
+        : (errorDetail?.message || 'Demo login is currently unavailable. Please register or sign in.');
+      setError(errorMessage);
     }
   };
 
@@ -287,7 +297,7 @@ export default function LoginPage() {
               </div>
               <h3 className="text-heading-md text-zinc-100 mb-2">Demo Account Unavailable</h3>
               <p className="text-body-sm text-zinc-400">
-                The Demo User account is currently not active. To explore InDE and start developing your innovation ideas, please register for a new account or sign in with your existing credentials.
+                The Demo User account is currently not active. To explore InDE and start developing your innovation ideas, please <strong className="text-zinc-300">register for a new account</strong> or use the <strong className="text-zinc-300">Sign In</strong> form to log in with your existing credentials.
               </p>
             </div>
             <div className="flex gap-3">
