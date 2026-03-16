@@ -575,8 +575,16 @@ class ScaffoldingEngine:
         return pending or {}
 
     def _set_pending_terminal_confirmation(self, pursuit_id: str, terminal_state: str,
-                                            intent: dict = None):
-        """Store pending terminal confirmation in database for persistence."""
+                                            intent: dict = None, mode: str = "confirmation"):
+        """
+        Store pending terminal confirmation in database for persistence.
+
+        Args:
+            pursuit_id: The pursuit ID
+            terminal_state: The detected terminal state
+            intent: The terminal intent dict from detector
+            mode: "clarification" (asking what user meant) or "confirmation" (asking to proceed)
+        """
         from datetime import datetime
         self.db.db.pending_terminal_confirmations.update_one(
             {"pursuit_id": pursuit_id},
@@ -584,6 +592,7 @@ class ScaffoldingEngine:
                 "pursuit_id": pursuit_id,
                 "terminal_state": terminal_state,
                 "intent": intent or {},
+                "mode": mode,  # v4.4.2: Track whether we're clarifying or confirming
                 "created_at": datetime.now(timezone.utc)
             }},
             upsert=True
@@ -638,17 +647,35 @@ class ScaffoldingEngine:
             )
 
         # v2.7/v3.2 FIX: Check for pending terminal state confirmation (DB-backed)
-        # Note: Only check if current_pursuit_id is not None to avoid None == None matching
+        # v4.4.2: Handle both "clarification" mode (asking what user meant) and
+        #         "confirmation" mode (asking to proceed with retrospective)
         pending_terminal = self._get_pending_terminal_confirmation(current_pursuit_id)
         if current_pursuit_id and pending_terminal.get("pursuit_id") == current_pursuit_id:
-            if self._user_accepted_formalization(message):
-                terminal_state = pending_terminal.get("terminal_state")
-                return self._initiate_retrospective(
-                    current_pursuit_id, terminal_state, user_id
-                )
-            elif self._user_declined_formalization(message):
-                self._clear_pending_terminal_confirmation(current_pursuit_id)
-                # Continue with normal processing
+            mode = pending_terminal.get("mode", "confirmation")
+            terminal_state = pending_terminal.get("terminal_state")
+
+            if mode == "clarification":
+                # v4.4.2: User is responding to a clarifying question about intent
+                if self._user_confirmed_terminal_intent(message):
+                    # User confirmed they meant terminal - proceed to retrospective
+                    return self._initiate_retrospective(
+                        current_pursuit_id, terminal_state, user_id
+                    )
+                elif self._user_denied_terminal_intent(message):
+                    # User clarified they didn't mean terminal - clear and continue
+                    self._clear_pending_terminal_confirmation(current_pursuit_id)
+                    # Continue with normal processing
+                # If neither confirmed nor denied, keep pending and continue
+                # (user might be talking about something else)
+            else:
+                # Original confirmation mode - asking to proceed with retrospective
+                if self._user_accepted_formalization(message):
+                    return self._initiate_retrospective(
+                        current_pursuit_id, terminal_state, user_id
+                    )
+                elif self._user_declined_formalization(message):
+                    self._clear_pending_terminal_confirmation(current_pursuit_id)
+                    # Continue with normal processing
 
         # STEP 0: Check if user is accepting pending artifact generation (DB-backed for persistence)
         # Note: Only check if current_pursuit_id is not None to avoid None == None matching
@@ -1083,29 +1110,56 @@ class ScaffoldingEngine:
         print(f"[Engine] STEP 2.4 terminal detection: {time.time() - _t_start:.2f}s (skipped={skip_terminal})")
         terminal_state = terminal_intent.get("state", "ACTIVE")
         if terminal_state != "ACTIVE" and terminal_intent.get("confidence", 0) >= 0.70:
-            # Ask for confirmation before starting retrospective (v3.2 FIX: DB-backed)
-            self._set_pending_terminal_confirmation(
-                current_pursuit_id, terminal_state, terminal_intent
-            )
             pursuit = self.db.get_pursuit(current_pursuit_id)
             pursuit_title = pursuit.get("title", "your pursuit") if pursuit else "your pursuit"
 
-            # Generate confirmation prompt
-            state_descriptions = {
-                "COMPLETED.SUCCESSFUL": "achieved its goals",
-                "COMPLETED.VALIDATED_NOT_PURSUED": "been validated but you've decided not to proceed",
-                "TERMINATED.INVALIDATED": "been invalidated through testing",
-                "TERMINATED.PIVOTED": "pivoted to a new direction",
-                "TERMINATED.ABANDONED": "been discontinued",
-                "TERMINATED.OBE": "been overtaken by events"
+            # v4.4.2 FIX: For ambiguous keywords, ask clarifying question first
+            # Instead of assuming intent, verify with the user
+            ambiguous_states = {
+                "TERMINATED.PIVOTED": {
+                    "keyword": "pivot",
+                    "clarification": (
+                        f"I noticed you mentioned **pivoting**. I want to make sure I understand correctly:\n\n"
+                        f"- Are you **changing direction** on **{pursuit_title}** and want to close it out?\n"
+                        f"- Or are you just **shifting your focus** to a different aspect while continuing this pursuit?\n\n"
+                        f"Let me know so I can support you appropriately."
+                    )
+                },
+                "TERMINATED.ABANDONED": {
+                    "keyword": "stop",
+                    "clarification": (
+                        f"It sounds like you might be considering **ending** **{pursuit_title}**.\n\n"
+                        f"- Are you ready to **close out** this pursuit?\n"
+                        f"- Or did you mean something else?\n\n"
+                        f"Just want to make sure I understand your intent."
+                    )
+                }
             }
-            state_desc = state_descriptions.get(terminal_state, "reached its conclusion")
 
-            response = (
-                f"It sounds like **{pursuit_title}** has {state_desc}. "
-                f"Would you like to conduct a brief retrospective to capture what you've learned? "
-                f"This will help build your innovation memory and benefit future pursuits."
-            )
+            if terminal_state in ambiguous_states:
+                # Ask clarifying question instead of assuming intent
+                self._set_pending_terminal_confirmation(
+                    current_pursuit_id, terminal_state, terminal_intent, mode="clarification"
+                )
+                response = ambiguous_states[terminal_state]["clarification"]
+            else:
+                # For unambiguous states, proceed with normal confirmation
+                self._set_pending_terminal_confirmation(
+                    current_pursuit_id, terminal_state, terminal_intent, mode="confirmation"
+                )
+                state_descriptions = {
+                    "COMPLETED.SUCCESSFUL": "achieved its goals",
+                    "COMPLETED.VALIDATED_NOT_PURSUED": "been validated but you've decided not to proceed",
+                    "TERMINATED.INVALIDATED": "been invalidated through testing",
+                    "TERMINATED.OBE": "been overtaken by events"
+                }
+                state_desc = state_descriptions.get(terminal_state, "reached its conclusion")
+
+                response = (
+                    f"It sounds like **{pursuit_title}** has {state_desc}. "
+                    f"Would you like to conduct a brief retrospective to capture what you've learned? "
+                    f"This will help build your innovation memory and benefit future pursuits."
+                )
 
             self._save_conversation_turn(
                 pursuit_id=current_pursuit_id, role="user", content=message,
@@ -1816,6 +1870,83 @@ class ScaffoldingEngine:
             if re.search(pattern, message_lower):
                 return True
 
+        return False
+
+    def _user_confirmed_terminal_intent(self, message: str) -> bool:
+        """
+        v4.4.2: Check if user confirmed terminal intent in response to clarifying question.
+
+        Used when system asked: "Are you changing direction or just shifting focus?"
+        Returns True if user confirms they ARE ending/pivoting the pursuit.
+        """
+        import re
+        message_lower = message.lower().strip()
+
+        # Patterns indicating user confirms terminal intent
+        confirm_patterns = [
+            # Direct confirmations of ending/pivoting
+            r"^yes\b",
+            r"^yeah\b",
+            r"^yep\b",
+            r"\byes,?\s*(i am|i'm|we are|we're)\s*(changing|pivoting|ending|stopping|closing)\b",
+            r"\b(i am|i'm|we are|we're)\s*(changing direction|pivoting|ending|stopping|closing)\b",
+            r"\bchanging direction\b",
+            r"\bclosing (it |this |the pursuit )?out\b",
+            r"\bending (this|the) pursuit\b",
+            r"\bready to (close|end|stop)\b",
+            r"\blet'?s (close|end|stop) (it|this)\b",
+            r"\byes,?\s*close\b",
+            r"\btime to move on\b",
+            r"\bmoving on from this\b",
+            r"\bdone with (this|it)\b",
+            # Retrospective acceptance
+            r"\bstart the retrospective\b",
+            r"\bdo the retrospective\b",
+            r"\bcapture (the |my |our )?(learnings?|lessons?)\b",
+        ]
+
+        for pattern in confirm_patterns:
+            if re.search(pattern, message_lower):
+                return True
+        return False
+
+    def _user_denied_terminal_intent(self, message: str) -> bool:
+        """
+        v4.4.2: Check if user denied terminal intent in response to clarifying question.
+
+        Used when system asked: "Are you changing direction or just shifting focus?"
+        Returns True if user clarifies they are NOT ending/pivoting the pursuit.
+        """
+        import re
+        message_lower = message.lower().strip()
+
+        # Patterns indicating user denies terminal intent
+        deny_patterns = [
+            # Direct denials
+            r"^no\b",
+            r"^nope\b",
+            r"^not\b",
+            r"\bno,?\s*(i'm not|i am not|we're not|we are not)\b",
+            # Clarifying forward progress
+            r"\bjust (shifting|moving|changing) (my |our )?(focus|attention)\b",
+            r"\bshifting (my |our )?(focus|attention)\b",
+            r"\bstill (working on|pursuing|continuing)\b",
+            r"\bnot (ending|stopping|closing|pivoting)\b",
+            r"\bnot changing direction\b",
+            r"\bstaying with (this|it)\b",
+            r"\bcontinuing (this|the) pursuit\b",
+            r"\bkeep(ing)? going\b",
+            r"\bthe (pursuit|project|idea) is (still )?active\b",
+            # Corrections
+            r"\bdidn't mean (that|to end|to stop|to close)\b",
+            r"\bmeant (focus|attention|emphasis)\b",
+            r"\btalking about (focus|attention|approach)\b",
+            r"\bmisunderst(ood|anding)\b",
+        ]
+
+        for pattern in deny_patterns:
+            if re.search(pattern, message_lower):
+                return True
         return False
 
     def _detect_pursuit_recall(self, message: str, user_id: str) -> Optional[Dict]:
