@@ -60,5 +60,5 @@ Thumbs.db
 # Jupyter
 .ipynb_checkpoints/
 
-# Artifacts (persisted in Docker volume)
-artifacts/
+# Artifacts (persisted in Docker volume - root level only)
+/artifacts/
