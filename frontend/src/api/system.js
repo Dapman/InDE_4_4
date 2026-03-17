@@ -53,4 +53,8 @@ export const systemApi = {
   // User diagnostics (v3.16 - admin only)
   getUserDiagnostics: (onlineThresholdMinutes = 15) =>
     client.get('/system/diagnostics/users', { params: { online_threshold_minutes: onlineThresholdMinutes } }).then((res) => res.data),
+
+  // Innovator Vitals (v4.4.1 - admin only)
+  getInnovatorVitals: () =>
+    client.get('/system/diagnostics/innovator-vitals').then((res) => res.data),
 };

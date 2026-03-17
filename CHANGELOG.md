@@ -1,5 +1,37 @@
 # InDE MVP Changelog
 
+## [4.4.1] — 2026-03-17 "Innovation Vitals"
+
+### Series
+InDE v4.x — Momentum Management. v4.4.1 adds the Innovation Vitals panel to
+Admin Diagnostics, enabling real-time behavioral analysis of beta testers.
+
+### Added
+**Innovation Vitals Panel — Admin Diagnostics**
+- New "Innovator Vitals" tab as first tab in Diagnostics panel
+- Per-user behavioral intelligence aggregation from existing MongoDB collections
+- Engagement status classification: ENGAGED, EXPLORING, AT RISK, DORMANT, NEW
+- Summary bar with status counts and color indicators
+- Sortable table with columns: Innovator, Experience, Pursuits, Phase, Artifacts, Sessions, Status
+- Expandable row details: Last Login, Session Duration, Member Since
+- Status and experience level filter dropdowns
+- Client-side search by name or email
+- CSV export of current filtered view
+- Auto-refresh every 120 seconds
+
+**Backend Aggregation Endpoint**
+- GET /api/system/diagnostics/innovator-vitals (admin-only)
+- InnovatorVitalsService class for efficient MongoDB aggregation
+- Response envelope with users array, summary counts, and warnings
+
+### Architecture
+- New module: app/modules/diagnostics/innovator_vitals.py
+- New component: frontend/src/components/admin/InnovatorVitalsTab.jsx
+- Zero changes to coaching logic (ODICM, scaffolding, IML, RVE)
+- Read-only queries against existing collections
+
+---
+
 ## [4.4.0] — 2026-03-XX "The Learning Engine"
 
 ### Series

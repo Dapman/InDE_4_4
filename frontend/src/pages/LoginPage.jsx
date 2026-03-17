@@ -281,7 +281,7 @@ export default function LoginPage() {
 
         {/* Version */}
         <p className="text-caption text-zinc-600 text-center mt-6">
-          InDE v4.4.0
+          InDE v4.4.1
         </p>
       </div>
 

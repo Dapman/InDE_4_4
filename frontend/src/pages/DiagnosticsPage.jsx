@@ -19,8 +19,10 @@ import {
   BarChart2,
   Circle,
   Mail,
+  HeartPulse,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import InnovatorVitalsTab from '../components/admin/InnovatorVitalsTab';
 
 // =============================================================================
 // DIAGNOSTICS SECTION
@@ -382,94 +384,27 @@ function ActiveUsersTable({ users, onlineCount, totalCount }) {
 }
 
 // =============================================================================
-// MAIN DIAGNOSTICS PAGE
+// TABS CONFIGURATION (v4.4.1)
 // =============================================================================
 
-export default function DiagnosticsPage() {
-  const user = useAuthStore((s) => s.user);
+const TABS = [
+  { id: 'vitals', label: 'Innovator Vitals', icon: HeartPulse },
+  { id: 'system', label: 'System Health', icon: Server },
+  { id: 'users', label: 'User Directory', icon: Users },
+  { id: 'onboarding', label: 'Onboarding', icon: BarChart2 },
+  { id: 'errors', label: 'Errors', icon: AlertTriangle },
+];
 
-  // Check admin role
-  if (!user || user.role !== 'admin') {
-    return <Navigate to="/" replace />;
-  }
+// =============================================================================
+// SYSTEM HEALTH TAB CONTENT
+// =============================================================================
 
-  const {
-    data: diagnostics,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ['diagnostics'],
-    queryFn: () => systemApi.getDiagnostics({ include_errors: true, error_limit: 20 }),
-    refetchInterval: 30000, // Refresh every 30 seconds
-    staleTime: 10000,
-  });
-
-  // v3.16: Fetch user diagnostics
-  const {
-    data: userDiagnostics,
-    refetch: refetchUsers,
-  } = useQuery({
-    queryKey: ['diagnostics-users'],
-    queryFn: () => systemApi.getUserDiagnostics(15),
-    refetchInterval: 30000, // Refresh every 30 seconds
-    staleTime: 10000,
-  });
-
-  if (isLoading) {
-    return (
-      <div className="p-6 max-w-6xl mx-auto">
-        <div className="flex items-center gap-2 text-zinc-500">
-          <RefreshCw className="w-4 h-4 animate-spin" />
-          <span>Loading diagnostics...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-6 max-w-6xl mx-auto">
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-red-400">
-            <AlertCircle className="w-5 h-5" />
-            <span>Failed to load diagnostics</span>
-          </div>
-          <p className="text-caption text-red-400/80 mt-1">
-            {error.response?.data?.detail || error.message}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
+function SystemHealthTab({ diagnostics, userDiagnostics, refetch, refetchUsers }) {
   return (
-    <div className="p-6 max-w-6xl mx-auto h-full overflow-y-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-heading-md text-zinc-100 flex items-center gap-2">
-            <Activity className="w-6 h-6 text-inde-400" />
-            System Diagnostics
-          </h1>
-          <p className="text-caption text-zinc-500 mt-1">
-            Operational health monitoring for administrators
-          </p>
-        </div>
-        <button
-          onClick={() => { refetch(); refetchUsers(); }}
-          className="flex items-center gap-2 px-3 py-2 bg-surface-3 hover:bg-surface-4
-                     border border-surface-border rounded-lg text-body-sm text-zinc-300
-                     transition-colors"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Refresh
-        </button>
-      </div>
-
+    <div className="space-y-6">
       {/* Last updated */}
       {diagnostics?.collected_at && (
-        <p className="text-caption text-zinc-600 mb-4">
+        <p className="text-caption text-zinc-600">
           Last updated: {new Date(diagnostics.collected_at).toLocaleString()}
         </p>
       )}
@@ -530,20 +465,6 @@ export default function DiagnosticsPage() {
         </div>
       </DiagnosticsSection>
 
-      {/* Active Users (v3.16) */}
-      <DiagnosticsSection title="User Directory" icon={Users}>
-        <ActiveUsersTable
-          users={userDiagnostics?.users}
-          onlineCount={userDiagnostics?.online_count}
-          totalCount={userDiagnostics?.total_count}
-        />
-      </DiagnosticsSection>
-
-      {/* Onboarding Funnel */}
-      <DiagnosticsSection title="Onboarding Funnel" icon={BarChart2}>
-        <OnboardingFunnel funnel={diagnostics?.onboarding_funnel} />
-      </DiagnosticsSection>
-
       {/* System Health */}
       <DiagnosticsSection
         title="System Health"
@@ -552,11 +473,158 @@ export default function DiagnosticsPage() {
       >
         <SystemHealth health={diagnostics?.system_health} />
       </DiagnosticsSection>
+    </div>
+  );
+}
 
-      {/* Recent Errors */}
-      <DiagnosticsSection title="Recent Errors" icon={AlertCircle}>
-        <ErrorTable errors={diagnostics?.recent_errors} />
-      </DiagnosticsSection>
+// =============================================================================
+// MAIN DIAGNOSTICS PAGE
+// =============================================================================
+
+export default function DiagnosticsPage() {
+  const user = useAuthStore((s) => s.user);
+  const [activeTab, setActiveTab] = useState('vitals');
+
+  // Check admin role
+  if (!user || user.role !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
+
+  const {
+    data: diagnostics,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['diagnostics'],
+    queryFn: () => systemApi.getDiagnostics({ include_errors: true, error_limit: 20 }),
+    refetchInterval: 30000, // Refresh every 30 seconds
+    staleTime: 10000,
+  });
+
+  // v3.16: Fetch user diagnostics
+  const {
+    data: userDiagnostics,
+    refetch: refetchUsers,
+  } = useQuery({
+    queryKey: ['diagnostics-users'],
+    queryFn: () => systemApi.getUserDiagnostics(15),
+    refetchInterval: 30000, // Refresh every 30 seconds
+    staleTime: 10000,
+  });
+
+  if (isLoading && activeTab !== 'vitals') {
+    return (
+      <div className="p-6 max-w-6xl mx-auto">
+        <div className="flex items-center gap-2 text-zinc-500">
+          <RefreshCw className="w-4 h-4 animate-spin" />
+          <span>Loading diagnostics...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && activeTab !== 'vitals') {
+    return (
+      <div className="p-6 max-w-6xl mx-auto">
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-red-400">
+            <AlertCircle className="w-5 h-5" />
+            <span>Failed to load diagnostics</span>
+          </div>
+          <p className="text-caption text-red-400/80 mt-1">
+            {error.response?.data?.detail || error.message}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 max-w-6xl mx-auto h-full overflow-y-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-heading-md text-zinc-100 flex items-center gap-2">
+            <Activity className="w-6 h-6 text-inde-400" />
+            Admin Diagnostics
+          </h1>
+          <p className="text-caption text-zinc-500 mt-1">
+            Operational health monitoring and beta testing analysis
+          </p>
+        </div>
+        {activeTab !== 'vitals' && (
+          <button
+            onClick={() => { refetch(); refetchUsers(); }}
+            className="flex items-center gap-2 px-3 py-2 bg-surface-3 hover:bg-surface-4
+                       border border-surface-border rounded-lg text-body-sm text-zinc-300
+                       transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </button>
+        )}
+      </div>
+
+      {/* Tab Navigation (v4.4.1) */}
+      <div className="flex gap-1 mb-6 bg-surface-2 rounded-lg p-1 border border-surface-border">
+        {TABS.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-md text-body-sm font-medium transition-colors',
+                activeTab === tab.id
+                  ? 'bg-surface-4 text-zinc-100'
+                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-surface-3'
+              )}
+            >
+              <Icon className="w-4 h-4" />
+              <span className="hidden sm:inline">{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab Content */}
+      <div className="min-h-[400px]">
+        {activeTab === 'vitals' && (
+          <InnovatorVitalsTab />
+        )}
+
+        {activeTab === 'system' && (
+          <SystemHealthTab
+            diagnostics={diagnostics}
+            userDiagnostics={userDiagnostics}
+            refetch={refetch}
+            refetchUsers={refetchUsers}
+          />
+        )}
+
+        {activeTab === 'users' && (
+          <DiagnosticsSection title="User Directory" icon={Users}>
+            <ActiveUsersTable
+              users={userDiagnostics?.users}
+              onlineCount={userDiagnostics?.online_count}
+              totalCount={userDiagnostics?.total_count}
+            />
+          </DiagnosticsSection>
+        )}
+
+        {activeTab === 'onboarding' && (
+          <DiagnosticsSection title="Onboarding Funnel" icon={BarChart2}>
+            <OnboardingFunnel funnel={diagnostics?.onboarding_funnel} />
+          </DiagnosticsSection>
+        )}
+
+        {activeTab === 'errors' && (
+          <DiagnosticsSection title="Recent Errors" icon={AlertCircle}>
+            <ErrorTable errors={diagnostics?.recent_errors} />
+          </DiagnosticsSection>
+        )}
+      </div>
     </div>
   );
 }

@@ -27,7 +27,7 @@ from middleware.license import (
     get_license_info_for_frontend,
     clear_first_run_cache
 )
-from modules.diagnostics import get_diagnostics
+from modules.diagnostics import get_diagnostics, get_innovator_vitals
 
 router = APIRouter()
 
@@ -619,4 +619,54 @@ async def get_user_diagnostics(
         "total_count": len(users_list),
         "online_threshold_minutes": online_threshold_minutes,
         "collected_at": datetime.now(timezone.utc).isoformat()
+    }
+
+
+# =============================================================================
+# v4.4.1: Innovation Vitals Endpoint
+# =============================================================================
+
+@router.get("/diagnostics/innovator-vitals")
+async def get_innovator_vitals_endpoint(
+    request: Request,
+    user: dict = Depends(get_current_user)
+):
+    """
+    Get per-user innovation vitals for beta testing analysis (admin-only).
+
+    Returns behavioral intelligence aggregated from existing MongoDB collections:
+    - Per-user innovation activity (pursuits, artifacts, coaching sessions)
+    - Engagement status classification (ENGAGED, EXPLORING, AT RISK, DORMANT, NEW)
+    - Summary counts by status
+
+    This endpoint aggregates data already present in MongoDB. No new writes.
+    Designed to complete in < 1 second for 500 users.
+
+    Response envelope:
+    {
+        "users": [...],  // InnovatorVitalsRecord per user
+        "summary": { "total", "engaged", "exploring", "at_risk", "dormant", "new" },
+        "generated_at": ISO 8601 timestamp,
+        "warnings": []  // Empty if no issues
+    }
+    """
+    # Check admin role
+    db = request.app.state.db
+    user_doc = db.db.users.find_one({"user_id": user["user_id"]})
+
+    if not user_doc or user_doc.get("role") != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required to view innovator vitals"
+        )
+
+    # Get vitals
+    vitals = get_innovator_vitals(db)
+
+    # Convert to dict for JSON serialization
+    return {
+        "users": [u.model_dump() for u in vitals.users],
+        "summary": vitals.summary.model_dump(),
+        "generated_at": vitals.generated_at.isoformat(),
+        "warnings": vitals.warnings
     }
